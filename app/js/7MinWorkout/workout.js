@@ -26,19 +26,7 @@ angular.module('7minWorkout').controller('WorkoutController', ['$scope', '$inter
     }
     
     var restExercise;
-    
-    var getNextExercise = function (currentExercisePlan) {
-        var nextExercise = null;
-        if (currentExercisePlan === restExercise) {
-            nextExercise = $scope.workoutPlan.exercises.shift();
-        } else {
-            if ($scope.workoutPlan.exercises.length != 0) {
-                nextExercise = restExercise;
-            }
-        }
-        return nextExercise;
-    };
-    
+    var exerciseIntervalPromise;
     
     /*
     $scope.$watch('currentExerciseDuration', function (nVal) {
@@ -53,39 +41,80 @@ angular.module('7minWorkout').controller('WorkoutController', ['$scope', '$inter
     });
     */
    
-    var startWorkout = function() {
-       $scope.workoutPlan = createWorkout();
-       $scope.workoutTimeRemaining = $scope.workoutPlan.totalWorkoutDuration();
-       restExercise = {
-           details: new Exercise({
-                name: "rest",
-                title: " Relax!",
-                description: " Relax a bit!",
-                image: "img/rest.png",
-           }),
-           duration: $scope.workoutPlan.restBetweenExercise
-       };
-       $interval(function() {
-           $scope.workoutTimeRemaining = $scope.workoutTimeRemaining - 1;
-       }, 1000, $scope.workoutTimeRemaining);
-       startExercise($scope.workoutPlan.exercises.shift());
-    };
+    var startWorkout = function () {
+          $scope.workoutPlan = createWorkout();
+          $scope.workoutTimeRemaining = $scope.workoutPlan.totalWorkoutDuration();
+          restExercise = {
+              details: new Exercise({
+                  name: "rest",
+                  title: "Relax!",
+                  description: "Relax a bit!",
+                  image: "img/rest.png",
+              }),
+              duration: $scope.workoutPlan.restBetweenExercise
+          };
+
+          $scope.currentExerciseIndex = -1;
+          startExercise($scope.workoutPlan.exercises[0]);
+      };
+
+      var startExercise = function (exercisePlan) {
+          $scope.currentExercise = exercisePlan;
+          $scope.currentExerciseDuration = 0;
+
+          if (exercisePlan.details.name != 'rest') {
+              $scope.currentExerciseIndex++;
+          }
+          exerciseIntervalPromise = startExerciseTimeTracking();
+      };
+      
+      var getNextExercise = function (currentExercisePlan) {
+          var nextExercise = null;
+          if (currentExercisePlan === restExercise) {
+              nextExercise = $scope.workoutPlan.exercises[$scope.currentExerciseIndex + 1];
+          }
+          else {
+              if ($scope.currentExerciseIndex < $scope.workoutPlan.exercises.length - 1) {
+                  nextExercise = restExercise;
+              }
+          }
+          return nextExercise;
+      };
     
-    var startExercise = function(exercisePlan) {
-        $scope.currentExercise = exercisePlan;
-        $scope.currentExerciseDuration = 0;
-        $interval(function () {
+    var startExerciseTimeTracking = function () {
+        var promise = $interval(function () {
             ++$scope.currentExerciseDuration;
-        }, 1000, $scope.currentExercise.duration)
-        .then(function() {
-            var next = getNextExercise(exercisePlan);
+            --$scope.workoutTimeRemaining;
+        }, 1000, $scope.currentExercise.duration - $scope.currentExerciseDuration);
+        
+        promise.then(function () {
+            var next = getNextExercise($scope.currentExercise);
             if (next) {
                 startExercise(next);
             } else {
                 $location.path('/finish');
             }
         });
-    }
+        return promise;
+    };
+    
+    $scope.pauseWorkout = function () {
+        $interval.cancel(exerciseIntervalPromise);
+        $scope.workoutPaused = true;
+    };
+    
+    $scope.resumeWorkout = function () {
+        exerciseIntervalPromise = startExerciseTimeTracking();
+        $scope.workoutPaused = false;
+    };
+    
+    $scope.pauseResumeToggle = function () {
+        if ($scope.workoutPaused) {
+            $scope.resumeWorkout();
+        } else {
+            $scope.pauseWorkout();
+        }
+    };
    
     var createWorkout = function() {
        var workout = new WorkoutPlan({
@@ -268,5 +297,50 @@ angular.module('7minWorkout').controller('WorkoutController', ['$scope', '$inter
         startWorkout();
     };
     
+    init();
+}]);
+
+angular.module('7minWorkout').controller('WorkoutAudioController', ['$scope', '$timeout',
+function ($scope, $timeout) {
+    $scope.exercisesAudio = [];
+    var workoutPlanwatch = $scope.$watch('workoutPlan', function (newValue, oldValue) {
+        if (newValue) { // newValue === workoutPlan
+            angular.forEach($scope.workoutPlan.exercises, function(exercise) {
+                $scope.exercisesAudio.push({
+                    src: exercise.details.nameSound,
+                    type: "audio/wav"
+                });
+            });
+            workoutPlanwatch();
+        }
+    });
+    
+    $scope.$watch('currentExercise', function (newValue, oldValue) {
+        if (newValue && newValue !== oldValue) {
+            if ($scope.currentExercise.details.name === 'rest') {
+                $timeout(function () {
+                    $scope.nextUpAudio.play();
+                }, 2000);
+                $timeout(function () {
+                    $scope.nextUpExerciseAudio.play($scope.currentExerciseIndex + 1, true);
+                }, 3000);
+            }
+        }
+    });
+    
+    $scope.$watch('currentExerciseDuration', function(newValue, oldValue) {
+        if (newValue) {
+            if (newValue === Math.floor($scope.currentExercise.duration / 2) &&
+            $scope.currentExercise.details.name !== 'rest') {
+                $scope.halfWayAudio.play();
+            }
+            else if (newValue === $scope.currentExercise.duration - 3) {
+                $scope.aboutToCompleteAudio.play();
+            }
+        }
+    });
+    
+    var init = function () {
+    };
     init();
 }]);
