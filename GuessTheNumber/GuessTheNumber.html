@@ -21,8 +21,12 @@
 	<script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.3.3/angular.js"></script>
 	<script type="text/javascript">
 		angular.module('app',[])
+<<<<<<< HEAD:GuessTheNumber/GuessTheNumber.html
 		.controller('GuessTheNumberController', GuessTheNumberController);
 		function GuessTheNumberController($scope) {
+=======
+		.controller('GuessTheNumberController',function($scope) {
+>>>>>>> 1c95c26070477e901013af99283503cd91dfe967:GuessTheNumber/GuessTheNumber.html
 			$scope.verifyGuess = function () {
 				$scope.deviation = $scope.original - $scope.guess;
 				$scope.noOfTries = $scope.noOfTries + 1;
@@ -34,7 +38,7 @@
 				$scope.deviation = null;
 			}
 			$scope.initializeGame();
-		}
+		});
 	</script>
 </body>
 </html>
