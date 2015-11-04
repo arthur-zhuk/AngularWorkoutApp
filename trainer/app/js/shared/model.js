@@ -9,7 +9,11 @@ angular.module('app')
             this.description = args.description;
             this.image = args.image;
             this.related = {};
+<<<<<<< HEAD
             this.related.videos = args.videos;
+=======
+            this.related.videos = args.videos || [];
+>>>>>>> cdea9a06a2c83dc9b09d44e9648c89fee363f457
             this.nameSound = args.nameSound;
             this.procedure = args.procedure;
         }
